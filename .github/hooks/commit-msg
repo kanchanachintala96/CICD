@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# .github/hooks/commit-msg
+# Enforces Conventional Commits: https://www.conventionalcommits.org
+# Install: cp .github/hooks/commit-msg .git/hooks/commit-msg && chmod +x .git/hooks/commit-msg
+
+COMMIT_MSG_FILE=$1
+COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+
+# Allow merge commits and revert commits
+if echo "$COMMIT_MSG" | grep -qE "^(Merge|Revert)"; then
+  exit 0
+fi
+
+PATTERN="^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .{1,100}"
+
+if ! echo "$COMMIT_MSG" | grep -qE "$PATTERN"; then
+  echo ""
+  echo "❌ Commit message does not follow Conventional Commits format."
+  echo ""
+  echo "   Expected: <type>(<scope>): <description>"
+  echo "   Example:  feat(pipeline): add deploy stage to azure exporter"
+  echo ""
+  echo "   Types: feat | fix | docs | style | refactor | perf | test | build | ci | chore | revert"
+  echo ""
+  exit 1
+fi
+
+echo "✅ Commit message format OK"
