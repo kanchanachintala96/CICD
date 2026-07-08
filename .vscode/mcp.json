@@ -1,0 +1,66 @@
+{
+  // ── MCP Servers for CI/CD Orchestrator Agent ────────────────────────────────
+  // VS Code reads this file automatically (Copilot Chat → Agent Mode).
+  //
+  // How to use
+  // ──────────
+  //  1. Open Copilot Chat in Agent mode  (@workspace)
+  //  2. The azure-devops tools become available automatically
+  //  3. You will be prompted for your PAT the first time
+  //
+  // Inputs below use VS Code's secure prompt — your PAT is never stored in plaintext.
+
+  "inputs": [
+    {
+      "id": "ado-pat",
+      "type": "promptString",
+      "description": "Azure DevOps Personal Access Token for maheshbabuhakeem  (Code R/W + Build R/Execute)",
+      "password": true
+    }
+  ],
+
+  "servers": {
+
+    // ── Azure DevOps MCP server ─────────────────────────────────────────────
+    // Org:     https://dev.azure.com/maheshbabuhakeem
+    // Project: maheshbabu_hakeem
+    //
+    // Provides tools: list repos, get pipelines, create pipeline, trigger run,
+    // get work items, manage branches, and more.
+    //
+    // npm package: azure-devops-mcp   (no install needed — npx pulls it on first run)
+    "azure-devops": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "azure-devops-mcp"],
+      "env": {
+        "AZURE_DEVOPS_URL":     "https://dev.azure.com/maheshbabuhakeem",
+        "AZURE_DEVOPS_PROJECT": "maheshbabu_hakeem",
+        "AZURE_DEVOPS_PAT":     "${input:ado-pat}"
+      }
+    },
+
+    // ── CI/CD Orchestrator MCP Server ─────────────────────────────────────
+    // Exposes the orchestrator as a proper MCP agent with 7 tools:
+    //
+    //   detect_project          — detect language, tests, Dockerfile
+    //   preview_pipeline        — generate pipeline steps (no execution)
+    //   run_pipeline_locally    — build + test locally
+    //   export_pipeline_yaml    — export GitHub Actions / GitLab / Jenkins / ADO YAML
+    //   deploy_to_azure_devops  — push code + create pipeline + set vars + trigger
+    //   get_run_history         — recent local pipeline runs
+    //   list_ado_repos          — list repos in the ADO project
+    //
+    // No web server needed — runs as a subprocess via stdio.
+    // Reads all credentials from .env automatically.
+    "cicd-orchestrator": {
+      "type": "stdio",
+      "command": "C:\\Users\\KanchanaChintala\\OneDrive - EPAM\\New folder\\cicd-orchestrator-agent\\venv\\Scripts\\python.exe",
+      "args": [
+        "C:\\Users\\KanchanaChintala\\OneDrive - EPAM\\New folder\\cicd-orchestrator-agent\\mcp_server.py"
+      ],
+      "env": {}
+    }
+
+  }
+}
