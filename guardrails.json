@@ -1,0 +1,94 @@
+{
+  "_protected": "DO NOT MODIFY — this file is the agent policy contract. Changes require explicit human approval. GitHub Copilot must never edit this file.",
+  "version": "1.0",
+  "description": "Guardrails for CI/CD Orchestrator Agent — defines security, compliance and resource policies enforced at runtime during pipeline generation and execution.",
+
+  "pipeline_policies": {
+    "require_tests": true,
+    "require_build": true,
+    "max_stages": 10,
+    "max_steps_per_stage": 20,
+    "allowed_deploy_targets": ["docker", "kubernetes", "script", "azure-container-apps"],
+    "disallowed_commands": [
+      "rm\\s+-rf\\s+/",
+      "sudo\\s+rm",
+      "chmod\\s+777",
+      "curl.*\\|.*(ba)?sh",
+      "wget.*\\|.*(ba)?sh",
+      "eval\\s+",
+      "base64\\s+-d.*\\|.*(ba)?sh",
+      "dd\\s+if=",
+      "mkfs\\."
+    ],
+    "require_pinned_actions": true
+  },
+
+  "secrets_policy": {
+    "block_hardcoded_secrets": true,
+    "secret_patterns": [
+      "AKIA[0-9A-Z]{16}",
+      "-----BEGIN (RSA|EC|OPENSSH) PRIVATE KEY",
+      "(?i)password\\s*=\\s*['\"][^'\"]{6,}",
+      "(?i)api[_-]?key\\s*=\\s*['\"][^'\"]{8,}",
+      "ghp_[A-Za-z0-9]{36}",
+      "xox[baprs]-[0-9A-Za-z]{10,}"
+    ],
+    "require_secret_manager": false,
+    "allowed_env_vars": [
+      "PATH", "HOME", "CI", "USER", "SHELL",
+      "GITHUB_*", "AZURE_*", "DOCKER_*",
+      "DIAL_*", "OPENAI_*",
+      "JAVA_*", "MAVEN_*", "GRADLE_*",
+      "NODE_*", "NPM_*",
+      "DOTNET_*", "NUGET_*",
+      "RUBY_*", "GEM_*",
+      "GOPATH", "GOROOT", "GOMODCACHE",
+      "CICD_*"
+    ]
+  },
+
+  "resource_limits": {
+    "max_pipeline_runtime_minutes": 60,
+    "max_parallel_jobs": 5,
+    "max_artifact_size_mb": 500,
+    "allowed_vm_images": [
+      "ubuntu-latest",
+      "ubuntu-22.04",
+      "ubuntu-20.04",
+      "windows-latest",
+      "macos-latest"
+    ]
+  },
+
+  "code_quality": {
+    "block_on_critical_findings": true,
+    "block_on_high_findings": false,
+    "minimum_test_coverage_percent": 0,
+    "require_lint_pass": false
+  },
+
+  "network_policy": {
+    "allow_external_downloads": true,
+    "allowed_registries": [
+      "docker.io",
+      "ghcr.io",
+      "mcr.microsoft.com",
+      "*.azurecr.io",
+      "registry.npmjs.org",
+      "pypi.org",
+      "repo1.maven.org",
+      "plugins.gradle.org",
+      "nuget.org",
+      "rubygems.org"
+    ],
+    "block_on_untrusted_registry": false
+  },
+
+  "compliance": {
+    "require_signed_commits": false,
+    "require_branch_protection": true,
+    "require_pr_review": true,
+    "minimum_pr_approvals": 1,
+    "enforce_conventional_commits": true
+  }
+}
