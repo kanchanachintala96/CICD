@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# .github/hooks/pre-push
+# Runs full test suite before pushing to remote
+# Install: cp .github/hooks/pre-push .git/hooks/pre-push && chmod +x .git/hooks/pre-push
+
+set -e
+
+REMOTE=$1
+URL=$2
+
+echo "🚀 Running pre-push checks before pushing to $REMOTE ($URL)..."
+
+# Run full test suite
+if command -v pytest &>/dev/null; then
+  echo "🧪 Running full test suite..."
+  pytest tests/ -v --tb=short
+  echo "✅ All tests passed"
+else
+  echo "⚠  pytest not found — skipping tests"
+fi
+
+echo "✅ Pre-push checks passed — proceeding with push"
