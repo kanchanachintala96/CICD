@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# .github/hooks/pre-commit
+# Install: cp .github/hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+# Or use:  git config core.hooksPath .github/hooks
+
+set -e
+
+echo "🔍 Running pre-commit checks..."
+
+# ── 1. Check for secrets / sensitive patterns ─────────────────────────────────
+PATTERNS=(
+  "AKIA[0-9A-Z]{16}"               # AWS Access Key
+  "-----BEGIN (RSA|EC) PRIVATE"    # Private keys
+  "password\s*=\s*['\"][^'\"]{6}"  # Hardcoded passwords
+)
+STAGED=$(git diff --cached --name-only --diff-filter=ACM)
+
+for file in $STAGED; do
+  for pattern in "${PATTERNS[@]}"; do
+    if git show ":$file" 2>/dev/null | grep -qE "$pattern"; then
+      echo "❌ Possible secret detected in $file (pattern: $pattern)"
+      echo "   Remove the secret before committing."
+      exit 1
+    fi
+  done
+done
+
+# ── 2. Prevent committing .env with real secrets ──────────────────────────────
+if echo "$STAGED" | grep -q "^\.env$"; then
+  echo "❌ Refusing to commit .env — add it to .gitignore"
+  exit 1
+fi
+
+# ── 3. Run ruff linter (if installed) ────────────────────────────────────────
+if command -v ruff &>/dev/null; then
+  echo "🧹 Running ruff..."
+  ruff check src/ app.py main.py --quiet
+else
+  echo "⚠  ruff not found — skipping lint (pip install ruff)"
+fi
+
+# ── 4. Run pytest on changed Python files ────────────────────────────────────
+CHANGED_PY=$(echo "$STAGED" | grep "\.py$" || true)
+if [ -n "$CHANGED_PY" ] && command -v pytest &>/dev/null; then
+  echo "🧪 Running tests..."
+  pytest tests/ -q --tb=short
+fi
+
+echo "✅ Pre-commit checks passed"
