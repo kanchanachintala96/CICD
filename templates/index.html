@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>CI/CD Orchestrator Agent</title>
+<style>
+:root{--primary:#2563eb;--primary-dark:#1d4ed8;--success:#16a34a;--danger:#dc2626;--warn:#d97706;--bg:#f1f5f9;--surface:#fff;--border:#e2e8f0;--text:#1e293b;--muted:#64748b;--radius:10px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.app{display:grid;grid-template-rows:auto 1fr auto;min-height:100vh}
+header{background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff;padding:1.2rem 2rem;display:flex;align-items:center;gap:1rem}
+header h1{font-size:1.4rem;font-weight:700}
+main{padding:1.5rem 2rem;max-width:1100px;margin:0 auto;width:100%}
+footer{text-align:center;padding:.75rem;font-size:.8rem;color:var(--muted);border-top:1px solid var(--border)}
+.tabs{display:flex;gap:.5rem;margin-bottom:1.5rem;border-bottom:2px solid var(--border);flex-wrap:wrap}
+.tab-btn{padding:.6rem 1.1rem;border:none;background:none;cursor:pointer;font-size:.88rem;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-2px;transition:.2s;font-weight:500}
+.tab-btn:hover{color:var(--primary)}
+.tab-btn.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:700}
+.tab-panel{display:none}.tab-panel.active{display:block}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;margin-bottom:1rem}
+.card h3{font-size:.95rem;font-weight:700;margin-bottom:.85rem}
+.form-row{margin-bottom:.9rem}
+label{display:block;font-size:.82rem;font-weight:600;margin-bottom:.3rem;color:var(--muted)}
+input[type=text],input[type=number],input[type=password],select{width:100%;padding:.5rem .75rem;border:1px solid var(--border);border-radius:6px;font-size:.88rem;outline:none;transition:.2s}
+input:focus,select:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem}
+.toggle-row{display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem}
+.toggle-row input[type=checkbox]{width:1rem;height:1rem;accent-color:var(--primary)}
+.toggle-row label{font-size:.88rem;font-weight:500;margin:0;color:var(--text)}
+.btn{display:inline-flex;align-items:center;gap:.4rem;padding:.5rem 1.1rem;border:none;border-radius:6px;font-size:.88rem;font-weight:600;cursor:pointer;transition:.2s}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover:not(:disabled){background:var(--primary-dark)}
+.btn-success{background:var(--success);color:#fff}.btn-success:hover:not(:disabled){background:#15803d}
+.btn-outline{background:#fff;border:1px solid var(--border);color:var(--text)}.btn-outline:hover:not(:disabled){border-color:var(--primary);color:var(--primary)}
+.btn-sm{padding:.3rem .7rem;font-size:.78rem}
+.btn-group{display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.75rem}
+.badge{display:inline-block;padding:.15rem .55rem;border-radius:999px;font-size:.72rem;font-weight:700}
+.badge-build{background:#dbeafe;color:#1d4ed8}.badge-test{background:#dcfce7;color:#15803d}
+.badge-deploy{background:#fef9c3;color:#92400e}.badge-cleanup{background:#f1f5f9;color:#475569}
+.badge-ok{background:#dcfce7;color:#15803d}.badge-fail{background:#fee2e2;color:#dc2626}
+.info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.65rem;margin-bottom:.75rem}
+.info-tile{background:var(--bg);border-radius:8px;padding:.65rem 1rem;border:1px solid var(--border)}
+.info-tile .lbl{font-size:.72rem;color:var(--muted);margin-bottom:.2rem}
+.info-tile .val{font-weight:700;font-size:.95rem}
+.steps-list{display:flex;flex-direction:column;gap:.45rem;margin-bottom:.75rem}
+.step-item{display:flex;align-items:flex-start;gap:.65rem;padding:.65rem .85rem;background:var(--bg);border-radius:8px;border:1px solid var(--border)}
+.step-num{background:var(--primary);color:#fff;width:1.5rem;height:1.5rem;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;flex-shrink:0;margin-top:.1rem}
+.step-name{font-weight:600;font-size:.88rem}
+.step-cmd{font-family:monospace;font-size:.78rem;color:var(--muted);margin-top:.15rem;word-break:break-all}
+.result-item{padding:.7rem .85rem;border-radius:8px;margin-bottom:.45rem;border-left:4px solid var(--border)}
+.result-item.ok{border-color:var(--success);background:#f0fdf4}
+.result-item.fail{border-color:var(--danger);background:#fef2f2}
+.result-header{display:flex;align-items:center;gap:.5rem;margin-bottom:.25rem;flex-wrap:wrap}
+.result-output{font-family:monospace;font-size:.75rem;white-space:pre-wrap;background:#1e293b;color:#e2e8f0;padding:.6rem;border-radius:5px;max-height:140px;overflow-y:auto;margin-top:.4rem}
+.code-box{font-family:monospace;font-size:.78rem;white-space:pre;background:#1e293b;color:#e2e8f0;padding:1rem;border-radius:8px;overflow:auto;max-height:480px}
+table{width:100%;border-collapse:collapse;font-size:.82rem}
+th{background:var(--bg);padding:.55rem .7rem;text-align:left;font-weight:600;color:var(--muted);border-bottom:1px solid var(--border)}
+td{padding:.55rem .7rem;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:hover td{background:var(--bg)}
+.alert{padding:.75rem 1rem;border-radius:8px;font-size:.86rem;margin-bottom:.75rem}
+.alert-danger{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}
+.alert-success{background:#dcfce7;color:#166534;border:1px solid #86efac}
+.spinner{width:2rem;height:2rem;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin 1s linear infinite;margin:1.5rem auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+.meter-label{display:flex;justify-content:space-between;font-size:.8rem;color:var(--muted);margin-bottom:.3rem}
+.meter-bar{height:10px;background:var(--border);border-radius:999px;overflow:hidden}
+.meter-fill{height:100%;border-radius:999px;transition:width .5s;background:linear-gradient(90deg,#16a34a,#2563eb)}
+.meter-fill.warn{background:linear-gradient(90deg,#d97706,#dc2626)}
+.review-panel{margin-top:.85rem;padding-top:.85rem;border-top:1px solid var(--border)}
+.review-header{display:flex;align-items:center;gap:.65rem;flex-wrap:wrap;margin-bottom:.65rem}
+.finding-item{padding:.6rem .85rem;border-radius:8px;margin-bottom:.4rem;border-left:4px solid var(--border);background:var(--bg)}
+.finding-item.critical{border-color:#7c3aed;background:#f5f3ff}
+.finding-item.high{border-color:var(--danger);background:#fef2f2}
+.finding-item.medium{border-color:var(--warn);background:#fffbeb}
+.finding-item.low{border-color:#2563eb;background:#eff6ff}
+.finding-item.info{border-color:var(--muted);background:#f8fafc}
+.badge-critical{background:#ede9fe;color:#6d28d9}
+.badge-high{background:#fee2e2;color:#dc2626}
+.badge-medium{background:#fef3c7;color:#92400e}
+.badge-low{background:#dbeafe;color:#1d4ed8}
+.badge-info{background:#f1f5f9;color:#475569}
+.rating-badge{display:inline-block;padding:.2rem .7rem;border-radius:999px;font-size:.78rem;font-weight:700}
+.rating-excellent{background:#dcfce7;color:#15803d}
+.rating-good{background:#dbeafe;color:#1d4ed8}
+.rating-fair{background:#fef9c3;color:#92400e}
+.rating-needs_improvement{background:#fee2e2;color:#dc2626}
+.token-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:.55rem;margin-top:.7rem}
+.ts{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:.55rem .85rem}
+.ts-lbl{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.ts-val{font-size:1rem;font-weight:700;margin-top:.1rem}
+.ts-val.blue{color:var(--primary)}.ts-val.green{color:var(--success)}.ts-val.orange{color:var(--warn)}
+.rag-files{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.5rem}
+.rag-tag{background:#dbeafe;color:#1e40af;padding:.12rem .5rem;border-radius:999px;font-size:.72rem;font-family:monospace}
+.provider-cards{display:flex;gap:.75rem;margin-bottom:1rem;flex-wrap:wrap}
+.pcard{flex:1;min-width:150px;border:2px solid var(--border);border-radius:10px;padding:.7rem 1rem;cursor:pointer;transition:.2s;background:var(--surface)}
+.pcard:hover{border-color:var(--primary)}
+.pcard.sel{border-color:var(--primary);background:#eff6ff}
+.pcard h4{font-size:.88rem;margin-bottom:.2rem}
+.pcard p{font-size:.72rem;color:var(--muted);line-height:1.4}
+.llm-step{display:flex;align-items:flex-start;gap:.6rem;padding:.6rem .75rem;background:var(--bg);border-radius:8px;border:1px solid var(--border);margin-bottom:.4rem}
+.llm-sn{background:var(--primary);color:#fff;width:1.4rem;height:1.4rem;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:700;flex-shrink:0}
+input[type=range]{width:100%;accent-color:var(--primary)}
+.range-row{display:flex;align-items:center;gap:.75rem;margin-top:.35rem}
+.range-row span{min-width:3.5rem;text-align:right;font-weight:700;font-size:.88rem;color:var(--primary)}
+@media(max-width:640px){.row2,.row3{grid-template-columns:1fr}header{flex-direction:column;gap:.25rem}}
+</style>
+</head>
+<body>
+<div class="app">
+
+<header>
+  <div style="font-size:1.6rem">&#128640;</div>
+  <div>
+    <h1>CI/CD Orchestrator Agent</h1>
+    <div style="font-size:.75rem;opacity:.75;margin-top:.1rem">Multi-language &bull; Multi-user &bull; Build &rarr; Test &rarr; Deploy</div>
+  </div>
+  <div id="user-badge" style="margin-left:auto;font-size:.75rem;background:rgba(255,255,255,.15);padding:.25rem .75rem;border-radius:999px">connecting...</div>
+</header>
+
+<main>
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="pipeline">&#128295; Pipeline</button>
+    <button class="tab-btn" data-tab="export">&#128228; Export CI Config</button>
+    <button class="tab-btn" data-tab="azure">&#9729; Azure Deploy</button>
+    <button class="tab-btn" data-tab="history">&#128203; Run History</button>
+  </div>
+
+  <!-- PIPELINE TAB -->
+  <div id="tab-pipeline" class="tab-panel active">
+
+    <div class="card" id="card-repo">
+      <h3>Step 1 &mdash; Repository Path</h3>
+      <div class="form-row">
+        <label for="repo-path">Enter the full path to your project folder</label>
+        <div style="display:flex;gap:.5rem">
+          <input type="text" id="repo-path" placeholder="C:\path\to\your\project  or  ./my-project" />
+          <button class="btn btn-primary" id="btn-detect">Detect</button>
+        </div>
+      </div>
+      <div id="detect-result" style="display:none"></div>
+    </div>
+
+    <div class="card" id="card-config" style="display:none">
+      <h3>Step 2 &mdash; Pipeline Configuration</h3>
+      <div class="row3" style="margin-bottom:.75rem">
+        <div class="toggle-row"><input type="checkbox" id="cfg-tests" checked/><label for="cfg-tests">Include Tests</label></div>
+        <div class="toggle-row"><input type="checkbox" id="cfg-lint"/><label for="cfg-lint">Include Linting</label></div>
+        <div class="toggle-row"><input type="checkbox" id="cfg-cleanup"/><label for="cfg-cleanup">Cleanup Steps</label></div>
+      </div>
+      <div class="row2">
+        <div class="form-row">
+          <label for="cfg-retries">Retries on failure (0-5)</label>
+          <input type="number" id="cfg-retries" min="0" max="5" value="0"/>
+        </div>
+        <div class="form-row">
+          <label for="cfg-extra">Extra command (optional)</label>
+          <textarea id="cfg-extra" rows="2" placeholder="One command per line&#10;e.g. make package" style="resize:vertical;font-family:monospace;font-size:.82rem;width:100%;padding:.5rem .75rem;border:1px solid var(--border);border-radius:6px;outline:none;transition:.2s"></textarea>
+        </div>
+      </div>
+      <div class="toggle-row">
+        <input type="checkbox" id="cfg-deploy-on"/>
+        <label for="cfg-deploy-on">Enable Deploy Stage</label>
+      </div>
+      <div id="deploy-opts" style="display:none;margin-top:.75rem">
+        <div class="row2">
+          <div class="form-row">
+            <label for="cfg-deploy-type">Deploy Type</label>
+            <select id="cfg-deploy-type" onchange="toggleDeployFields()">
+              <option value="docker">Docker (build &amp; push)</option>
+              <option value="kubernetes">Kubernetes (kubectl apply)</option>
+              <option value="script">Custom Script</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label for="cfg-deploy-env">Environment</label>
+            <select id="cfg-deploy-env"><option value="staging">staging</option><option value="production">production</option></select>
+          </div>
+        </div>
+        <div id="docker-fields" class="row2">
+          <div class="form-row"><label for="cfg-image">Docker Image Name</label><input type="text" id="cfg-image" placeholder="myorg/myapp"/></div>
+          <div class="form-row"><label for="cfg-registry">Registry (optional)</label><input type="text" id="cfg-registry" placeholder="ghcr.io"/></div>
+        </div>
+        <div id="k8s-fields" style="display:none" class="form-row"><label for="cfg-k8s">Manifest Path</label><input type="text" id="cfg-k8s" placeholder="k8s/"/></div>
+        <div id="script-fields" style="display:none" class="form-row"><label for="cfg-script">Deploy Script</label><input type="text" id="cfg-script" placeholder="./deploy.sh"/></div>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-outline" onclick="showCard('repo')">&#8592; Back</button>
+        <button class="btn btn-primary" id="btn-preview">Preview Pipeline</button>
+      </div>
+    </div>
+
+    <div class="card" id="card-preview" style="display:none">
+      <h3>Step 3 &mdash; Preview</h3>
+      <div id="preview-info" class="info-grid"></div>
+      <div id="steps-list" class="steps-list"></div>
+
+      <!-- AI Pipeline Review -->
+      <div style="margin-top:.75rem;padding:.75rem;background:var(--bg);border-radius:8px;border:1px solid var(--border)">
+        <div style="display:flex;align-items:center;gap:.65rem;flex-wrap:wrap;margin-bottom:.55rem">
+          <strong style="font-size:.88rem">&#129302; AI Pipeline Review &nbsp;<span style="font-size:.72rem;background:#dbeafe;color:#1e40af;padding:.1rem .5rem;border-radius:999px;font-weight:600">powered by EPAM AI DIAL</span></strong>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.65rem;margin-bottom:.5rem">
+          <div><label style="display:block;font-size:.75rem;font-weight:600;color:var(--muted);margin-bottom:.25rem">DIAL API Key</label>
+          <input type="password" id="pr-dial-key" placeholder="Enter your DIAL API key" autocomplete="off" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.8rem"/></div>
+          <div><label style="display:block;font-size:.75rem;font-weight:600;color:var(--muted);margin-bottom:.25rem">DIAL Base URL</label>
+          <input type="text" id="pr-dial-url" placeholder="https://ai-proxy.lab.epam.com" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.8rem"/></div>
+        </div>
+        <button class="btn btn-outline btn-sm" id="btn-pr-review">&#128269; Review Pipeline with AI</button>
+        <div id="pr-output" style="margin-top:.65rem"></div>
+      </div>
+
+      <div class="btn-group">
+        <button class="btn btn-outline" onclick="showCard('config')">&#8592; Back</button>
+        <button class="btn btn-success" id="btn-execute">&#9654; Run Pipeline Locally</button>
+        <button class="btn btn-primary" id="btn-deploy-ado">&#128640; Deploy to Azure DevOps</button>
+      </div>
+    </div>
+
+    <div class="card" id="card-ado" style="display:none">
+      <h3>Step 4 &mdash; Deploy to Azure DevOps</h3>
+      <p style="color:var(--muted);font-size:.83rem;margin-bottom:1rem">
+        The agent will push <code>azure-pipelines.yml</code> to your repository,
+        create the pipeline definition, and trigger the first run automatically.
+      </p>
+      <div class="row3">
+        <div class="form-row" style="grid-column:span 2">
+          <label for="ado-org-url">Azure DevOps Org URL</label>
+          <input type="text" id="ado-org-url" placeholder="https://dev.azure.com/myorg"/>
+        </div>
+        <div class="form-row">
+          <label for="ado-project">Project Name</label>
+          <input type="text" id="ado-project" placeholder="MyProject"/>
+        </div>
+      </div>
+      <div class="form-row">
+        <label for="ado-pat">Personal Access Token
+          <span style="font-size:.72rem;font-weight:400;color:var(--muted)">(needs: Code Read&amp;Write + Build Read&amp;Execute &mdash; leave blank if pre-configured)</span>
+        </label>
+        <input type="password" id="ado-pat" placeholder="Leave blank to use pre-configured PAT from environment" autocomplete="off"/>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-outline" onclick="showCard('preview')">&#8592; Back</button>
+        <button class="btn btn-primary" id="btn-ado-connect">&#128279; Connect &amp; Load Repos</button>
+        <span id="ado-connect-status" style="font-size:.82rem;margin-left:.5rem"></span>
+      </div>
+      <div id="ado-repo-config" style="display:none;margin-top:1rem">
+        <div class="row2">
+          <div class="form-row">
+            <label for="ado-repo">Repository</label>
+            <select id="ado-repo"></select>
+          </div>
+          <div class="form-row">
+            <label for="ado-branch">Branch</label>
+            <input type="text" id="ado-branch" value="main"/>
+          </div>
+        </div>
+        <div class="form-row">
+          <label for="ado-pipeline-name">Pipeline Name</label>
+          <input type="text" id="ado-pipeline-name" value="CI Pipeline"/>
+        </div>
+        <div class="toggle-row" style="margin-top:.65rem">
+          <input type="checkbox" id="ado-aca-on"/>
+          <label for="ado-aca-on">Include Deploy to Azure Container Apps</label>
+        </div>
+        <div id="ado-aca-fields" style="display:none;margin-top:.75rem;padding:.75rem;background:var(--bg);border-radius:8px;border:1px solid var(--border)">
+          <div style="font-size:.8rem;font-weight:600;color:var(--muted);margin-bottom:.6rem">Azure Container Apps Settings</div>
+          <div class="row3">
+            <div class="form-row">
+              <label for="ado-rg">Resource Group</label>
+              <input type="text" id="ado-rg" placeholder="my-rg"/>
+            </div>
+            <div class="form-row">
+              <label for="ado-acr">ACR Name</label>
+              <input type="text" id="ado-acr" placeholder="myacr"/>
+            </div>
+            <div class="form-row">
+              <label for="ado-app-name">Container App Name</label>
+              <input type="text" id="ado-app-name" placeholder="my-app"/>
+            </div>
+          </div>
+          <div class="row2">
+            <div class="form-row">
+              <label for="ado-location">Azure Region</label>
+              <input type="text" id="ado-location" value="eastus"/>
+            </div>
+            <div class="form-row">
+              <label for="ado-aca-env">ACA Environment Name <span style="font-weight:400;font-size:.72rem">(optional)</span></label>
+              <input type="text" id="ado-aca-env" placeholder="my-app-env (default: app-name-env)"/>
+            </div>
+          </div>
+          <div class="toggle-row" style="margin-top:.5rem">
+            <input type="checkbox" id="ado-skip-provision" checked/>
+            <label for="ado-skip-provision">Resources already exist — skip provisioning stage</label>
+          </div>
+          <div style="font-size:.75rem;color:#92400e;background:#fff8e1;padding:.45rem .65rem;border-radius:5px;border-left:3px solid var(--warn);margin-top:.5rem">
+            After creating the pipeline, add these 4 secret variables in ADO &rarr; Pipelines &rarr; Variables:<br/>
+            <code>AZURE_CLIENT_ID</code> &bull; <code>AZURE_CLIENT_SECRET</code> &bull; <code>AZURE_TENANT_ID</code> &bull; <code>AZURE_SUBSCRIPTION_ID</code>
+          </div>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-success" id="btn-ado-deploy">&#128640; Create &amp; Trigger Pipeline in Azure DevOps</button>
+        </div>
+      </div>
+      <div id="ado-result" style="display:none;margin-top:1.25rem">
+        <div class="alert alert-success" style="margin-bottom:.75rem">&#127881; Pipeline created and triggered successfully!</div>
+        <div id="ado-result-body"></div>
+        <div style="margin-top:1rem">
+          <div style="font-size:.82rem;font-weight:600;color:var(--muted);margin-bottom:.4rem">Generated azure-pipelines.yml</div>
+          <div id="ado-yaml-out" class="code-box" style="max-height:300px"></div>
+          <button class="btn btn-outline btn-sm" style="margin-top:.5rem" id="btn-ado-copy-yaml">Copy YAML</button>
+        </div>
+        <div class="btn-group" style="margin-top:1rem">
+          <button class="btn btn-primary" onclick="resetPipeline()">&#8635; New Pipeline</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="card-execution" style="display:none">
+      <h3>Step 4 &mdash; Execution</h3>
+      <div id="exec-spinner"><div class="spinner"></div><p style="text-align:center;color:var(--muted);margin-top:.5rem">Running pipeline steps...</p></div>
+      <div id="exec-results"></div>
+      <div id="exec-btns" class="btn-group" style="display:none">
+        <button class="btn btn-primary" onclick="resetPipeline()">&#8635; New Pipeline</button>
+        <button class="btn btn-outline" onclick="switchTab('history')">View History</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- EXPORT TAB -->
+  <div id="tab-export" class="tab-panel">
+    <div class="card">
+      <h3>Generate CI/CD Configuration File</h3>
+      <p style="color:var(--muted);font-size:.83rem;margin-bottom:1rem">Generates a ready-to-commit config file. No pipeline execution required.</p>
+      <div class="row2">
+        <div class="form-row">
+          <label for="exp-path">Project Path</label>
+          <input type="text" id="exp-path" placeholder="C:\path\to\your\project"/>
+        </div>
+        <div class="form-row">
+          <label for="exp-target">Target Platform</label>
+          <select id="exp-target">
+            <option value="azure-devops-basic">Azure DevOps — CI only (azure-pipelines.yml)</option>
+            <option value="azure-devops-aca">Azure DevOps — Full ACA Deploy (azure-pipelines-aca.yml)</option>
+            <option value="github-actions">GitHub Actions (.github/workflows/pipeline.yml)</option>
+            <option value="gitlab-ci">GitLab CI (.gitlab-ci.yml)</option>
+            <option value="jenkins">Jenkins (Jenkinsfile)</option>
+          </select>
+        </div>
+      </div>
+      <div class="row3">
+        <div class="toggle-row"><input type="checkbox" id="exp-tests" checked/><label for="exp-tests">Tests</label></div>
+        <div class="toggle-row"><input type="checkbox" id="exp-lint"/><label for="exp-lint">Lint</label></div>
+        <div class="toggle-row"><input type="checkbox" id="exp-deploy-on"/><label for="exp-deploy-on">Deploy Stage</label></div>
+      </div>
+      <div id="exp-deploy-opts" style="display:none;margin-top:.5rem" class="row2">
+        <div class="form-row">
+          <label for="exp-deploy-type">Deploy Type</label>
+          <select id="exp-deploy-type"><option value="docker">Docker</option><option value="kubernetes">Kubernetes</option><option value="script">Script</option></select>
+        </div>
+        <div class="form-row">
+          <label for="exp-deploy-env">Environment</label>
+          <select id="exp-deploy-env"><option value="staging">staging</option><option value="production">production</option></select>
+        </div>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-primary" id="btn-export">Generate Config</button>
+      </div>
+    </div>
+    <div id="export-out" style="display:none" class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+        <code id="exp-filename" style="font-size:.85rem;background:var(--bg);padding:.25rem .6rem;border-radius:5px"></code>
+        <button class="btn btn-outline btn-sm" id="btn-copy">Copy</button>
+      </div>
+      <div id="exp-code" class="code-box"></div>
+    </div>
+  </div>
+
+  <!-- AZURE DEPLOY TAB -->
+  <div id="tab-azure" class="tab-panel">
+
+    <!-- Step 1: Credentials -->
+    <div class="card">
+      <h3>Step 1 &mdash; Azure DevOps Credentials</h3>
+      <p style="color:var(--muted);font-size:.83rem;margin-bottom:1rem">
+        The agent will use these credentials to push <code>azure-pipelines.yml</code> to your repo,
+        create the pipeline definition, and trigger the first run automatically.
+      </p>
+      <div class="row3">
+        <div class="form-row" style="grid-column:span 2">
+          <label for="az-org-url">Azure DevOps Org URL</label>
+          <input type="text" id="az-org-url" placeholder="https://dev.azure.com/myorg"/>
+        </div>
+        <div class="form-row">
+          <label for="az-project">Project Name</label>
+          <input type="text" id="az-project" placeholder="MyProject"/>
+        </div>
+      </div>
+      <div class="form-row">
+        <label for="az-pat">Personal Access Token
+          <span style="font-size:.72rem;font-weight:400;color:var(--muted)">(needs: Code Read&amp;Write + Build Read&amp;Execute &mdash; leave blank if pre-configured)</span>
+        </label>
+        <input type="password" id="az-pat" placeholder="Leave blank to use pre-configured PAT from environment" autocomplete="off"/>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-primary" id="btn-az-connect">&#128279; Connect &amp; Load Repos</button>
+        <span id="az-connect-status" style="font-size:.82rem;margin-left:.5rem"></span>
+      </div>
+    </div>
+
+    <!-- Step 2: Repo + ACA config (shown after connect) -->
+    <div class="card" id="az-config-card" style="display:none">
+      <h3>Step 2 &mdash; Repository &amp; Azure Container Apps Settings</h3>
+      <div class="row2">
+        <div class="form-row">
+          <label for="az-repo">Repository</label>
+          <select id="az-repo"></select>
+        </div>
+        <div class="form-row">
+          <label for="az-branch">Branch</label>
+          <input type="text" id="az-branch" value="main"/>
+        </div>
+      </div>
+      <div class="row3">
+        <div class="form-row">
+          <label for="az-acr">ACR Name</label>
+          <input type="text" id="az-acr" placeholder="myacr"/>
+        </div>
+        <div class="form-row">
+          <label for="az-rg">Resource Group</label>
+          <input type="text" id="az-rg" placeholder="my-rg"/>
+        </div>
+        <div class="form-row">
+          <label for="az-app">Container App Name</label>
+          <input type="text" id="az-app" placeholder="my-app"/>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="form-row">
+          <label for="az-location">Azure Region</label>
+          <input type="text" id="az-location" value="eastus"/>
+        </div>
+        <div class="form-row">
+          <label for="az-project-type">Project Type</label>
+          <select id="az-project-type">
+            <option value="java-maven">Java (Maven)</option>
+            <option value="java-gradle">Java (Gradle)</option>
+            <option value="python">Python</option>
+            <option value="nodejs">Node.js</option>
+            <option value="go">Go</option>
+            <option value="dotnet">.NET</option>
+            <option value="docker">Docker</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <label for="az-path">Local Project Path <span style="font-weight:400;font-size:.72rem;color:var(--muted)">(optional — leave blank if code is already in the repo)</span></label>
+        <input type="text" id="az-path" placeholder="C:\path\to\your\project  or  leave blank"/>
+      </div>
+      <div class="row3" style="margin-bottom:.5rem">
+        <div class="toggle-row"><input type="checkbox" id="az-tests" checked/><label for="az-tests">Include Tests</label></div>
+        <div class="toggle-row"><input type="checkbox" id="az-lint"/><label for="az-lint">Include Lint</label></div>
+        <div class="toggle-row"><input type="checkbox" id="az-skip-provision" checked/><label for="az-skip-provision">Skip provisioning (resources exist)</label></div>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-success" id="btn-az-deploy">&#128640; Create &amp; Trigger Pipeline in Azure DevOps</button>
+      </div>
+    </div>
+
+    <!-- Step 3: Result -->
+    <div id="az-result" style="display:none" class="card">
+      <h3>Pipeline Created &#127881;</h3>
+      <div id="az-result-body"></div>
+      <div style="margin-top:1rem">
+        <div style="font-size:.82rem;font-weight:600;color:var(--muted);margin-bottom:.4rem">Generated azure-pipelines.yml</div>
+        <div id="az-yaml-out" class="code-box" style="max-height:350px"></div>
+        <button class="btn btn-outline btn-sm" style="margin-top:.5rem" id="btn-az-copy">Copy YAML</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- HISTORY TAB -->
+  <div id="tab-history" class="tab-panel">
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem">
+        <h3 style="margin:0">Recent Pipeline Runs</h3>
+        <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:.35rem;font-size:.8rem;font-weight:400;color:var(--muted);margin:0">
+            <input type="checkbox" id="hist-all"/> Show all users
+          </label>
+          <button class="btn btn-outline btn-sm" id="btn-refresh">Refresh</button>
+        </div>
+      </div>
+      <div id="hist-body"><div class="spinner"></div></div>
+    </div>
+    <div id="run-detail" style="display:none" class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+        <h3 style="margin:0">Run Detail</h3>
+        <button class="btn btn-outline btn-sm" onclick="document.getElementById('run-detail').style.display='none'">Close</button>
+      </div>
+      <div id="run-detail-body"></div>
+    </div>
+  </div>
+
+</main>
+<footer>CI/CD Orchestrator Agent v0.2 &bull; Multi-language &bull; Multi-user &bull; Build &rarr; Test &rarr; Deploy</footer>
+</div>
+
+<script>
+var state = {path:'',type:'',info:{}};
+
+function switchTab(name){
+  document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.toggle('active',b.dataset.tab===name);});
+  document.querySelectorAll('.tab-panel').forEach(function(p){p.classList.toggle('active',p.id==='tab-'+name);});
+  if(name==='history') loadHistory();
+}
+document.querySelectorAll('.tab-btn').forEach(function(b){
+  b.addEventListener('click',function(){switchTab(b.dataset.tab);});
+});
+
+function showCard(name){
+  ['repo','config','preview','execution','ado'].forEach(function(s){
+    var el=document.getElementById('card-'+s);
+    if(el) el.style.display=(s===name)?'':'none';
+  });
+}
+
+document.getElementById('btn-detect').addEventListener('click',async function(){
+  var path=document.getElementById('repo-path').value.trim();
+  if(!path){alert('Please enter a project path.');return;}
+  var btn=this; btn.textContent='Detecting...'; btn.disabled=true;
+  try{
+    var r=await fetch('/api/detect',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:path})});
+    var d=await r.json();
+    if(d.error){alert('Error: '+d.error);return;}
+    state.path=d.path; state.type=d.type; state.info=d;
+    var res=document.getElementById('detect-result');
+    res.style.display='';
+    res.innerHTML='<div class="info-grid">'+
+      '<div class="info-tile"><div class="lbl">Project Type</div><div class="val">'+esc(d.type)+'</div></div>'+
+      '<div class="info-tile"><div class="lbl">Has Tests</div><div class="val">'+(d.has_tests?'Yes':'No')+'</div></div>'+
+      '<div class="info-tile"><div class="lbl">Dockerfile</div><div class="val">'+(d.has_dockerfile?'Yes':'No')+'</div></div>'+
+      '<div class="info-tile"><div class="lbl">Lint Config</div><div class="val">'+(d.has_lint_config?'Yes':'No')+'</div></div>'+
+      '</div>'+
+      '<div class="review-panel">'+
+        '<div class="review-header">'+
+          '<strong style="font-size:.88rem">&#129302; AI Code Review &nbsp;<span style="font-size:.72rem;background:#dbeafe;color:#1e40af;padding:.1rem .5rem;border-radius:999px;font-weight:600">powered by EPAM AI DIAL</span></strong>'+
+        '</div>'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.65rem;margin-bottom:.55rem">'+
+          '<div><label style="display:block;font-size:.75rem;font-weight:600;color:var(--muted);margin-bottom:.25rem">DIAL API Key</label>'+
+          '<input type="password" id="review-dial-key" placeholder="Enter your DIAL API key" autocomplete="off" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.8rem"/></div>'+
+          '<div><label style="display:block;font-size:.75rem;font-weight:600;color:var(--muted);margin-bottom:.25rem">DIAL Base URL</label>'+
+          '<input type="text" id="review-dial-url" placeholder="https://ai-proxy.lab.epam.com" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.8rem"/></div>'+
+        '</div>'+
+        '<div style="display:grid;grid-template-columns:1fr auto;gap:.65rem;align-items:flex-end;margin-bottom:.55rem">'+
+          '<div><label style="display:block;font-size:.75rem;font-weight:600;color:var(--muted);margin-bottom:.25rem">Model (leave blank for default: gpt-4o)</label>'+
+          '<input type="text" id="review-dial-model" placeholder="gpt-4o  /  gpt-4-turbo  /  claude-3-5-sonnet" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.8rem"/></div>'+
+          '<button class="btn btn-outline btn-sm" id="btn-review" style="white-space:nowrap">&#128269; Review Code</button>'+
+        '</div>'+
+        '<div id="review-output"></div>'+
+      '</div>'+
+      '<div class="btn-group"><button class="btn btn-primary" onclick="showCard(\'config\')">Configure Pipeline &rarr;</button></div>';
+    document.getElementById('btn-review').addEventListener('click',runCodeReview);
+    applyDialConfig();  // pre-fill DIAL fields after dynamic HTML is rendered
+  }catch(e){alert('Network error: '+e.message);}
+  finally{btn.textContent='Detect'; btn.disabled=false;}
+});
+
+function toggleReviewKey(){}  // no-op, kept for safety
+
+async function runCodeReview(){
+  var btn=document.getElementById('btn-review');
+  var out=document.getElementById('review-output');
+  var dialKey=(document.getElementById('review-dial-key')||{}).value||'';
+  var dialUrl=(document.getElementById('review-dial-url')||{}).value||'';
+  var dialModel=(document.getElementById('review-dial-model')||{}).value||'';
+  if(!state.path){return;}
+  btn.textContent='Reviewing...'; btn.disabled=true;
+  out.innerHTML='<div class="spinner" style="width:1.4rem;height:1.4rem;border-width:2px;margin:.5rem 0"></div>';
+  try{
+    var body={path:state.path,token_budget:4000,max_output_tokens:1200};
+    if(dialKey.trim()) body.dial_api_key=dialKey.trim();
+    if(dialUrl.trim()) body.dial_base_url=dialUrl.trim();
+    if(dialModel.trim()) body.model=dialModel.trim();
+    var r=await fetch('/api/review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    var d=await r.json();
+    if(d.error){out.innerHTML='<div class="alert alert-danger" style="font-size:.82rem">'+esc(d.error)+'</div>';return;}
+    renderCodeReview(d,out);
+  }catch(e){out.innerHTML='<div class="alert alert-danger" style="font-size:.82rem">'+esc(e.message)+'</div>';}
+  finally{btn.textContent='&#128269; Review Code'; btn.disabled=false;}
+}
+
+function renderCodeReview(d,container){
+  var rv=d.review, tu=d.token_usage, el=d.elapsed_s;
+  var ratingClass='rating-'+(rv.overall_rating||'fair').replace(/\s+/g,'_');
+  var ratingLabel=(rv.overall_rating||'-').replace(/_/g,' ');
+  var severityOrder={critical:0,high:1,medium:2,low:3,info:4};
+  var findings=(rv.findings||[]).slice().sort(function(a,b){
+    return (severityOrder[a.severity]||99)-(severityOrder[b.severity]||99);
+  });
+  var html='<div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:.55rem">'+
+    '<span class="rating-badge '+ratingClass+'">'+esc(ratingLabel)+'</span>'+
+    '<span style="font-size:.78rem;color:var(--muted)">'+esc(tu.model)+' &bull; '+el+'s'+
+    (tu.estimated_cost_usd!=null?' &bull; $'+tu.estimated_cost_usd.toFixed(6):(tu.provider==='ollama'?' &bull; FREE':''))+
+    '</span>'+
+    '</div>';
+  if(rv.summary){
+    html+='<p style="font-size:.82rem;color:var(--text);background:var(--bg);padding:.55rem .75rem;border-radius:7px;border-left:3px solid var(--primary);margin-bottom:.55rem">'+esc(rv.summary)+'</p>';
+  }
+  if(rv.positive_aspects&&rv.positive_aspects.length){
+    html+='<div style="margin-bottom:.55rem"><strong style="font-size:.78rem;color:var(--success)">&#10003; Positive aspects:</strong>'+
+      '<ul style="margin:.25rem 0 0 1.1rem;font-size:.78rem;color:var(--muted)">'+
+      rv.positive_aspects.map(function(p){return '<li>'+esc(p)+'</li>';}).join('')+
+      '</ul></div>';
+  }
+  if(findings.length){
+    html+='<div style="font-size:.78rem;font-weight:700;color:var(--muted);margin-bottom:.35rem">'+findings.length+' finding'+(findings.length!==1?'s':'')+'</div>';
+    html+=findings.map(function(f){
+      var sev=f.severity||'info';
+      return '<div class="finding-item '+esc(sev)+'">'+
+        '<div style="display:flex;align-items:center;gap:.45rem;flex-wrap:wrap;margin-bottom:.2rem">'+
+        '<span class="badge badge-'+esc(sev)+'">'+esc(sev.toUpperCase())+'</span>'+
+        '<span style="font-size:.72rem;background:var(--border);color:var(--muted);padding:.1rem .4rem;border-radius:4px">'+esc(f.category||'')+'</span>'+
+        '</div>'+
+        '<div style="font-size:.82rem;font-weight:600;margin-bottom:.15rem">'+esc(f.message||'')+'</div>'+
+        (f.suggestion?'<div style="font-size:.78rem;color:var(--muted)">&#128161; '+esc(f.suggestion)+'</div>':'')+
+        '</div>';
+    }).join('');
+  }else{
+    html+='<p style="font-size:.82rem;color:var(--success);font-weight:600">&#10004; No significant issues found.</p>';
+  }
+  container.innerHTML=html;
+}
+
+document.getElementById('cfg-deploy-on').addEventListener('change',function(){
+  document.getElementById('deploy-opts').style.display=this.checked?'':'none';
+});
+function toggleDeployFields(){
+  var t=document.getElementById('cfg-deploy-type').value;
+  document.getElementById('docker-fields').style.display=t==='docker'?'':'none';
+  document.getElementById('k8s-fields').style.display=t==='kubernetes'?'':'none';
+  document.getElementById('script-fields').style.display=t==='script'?'':'none';
+}
+
+function buildPayload(){
+  var dep=document.getElementById('cfg-deploy-on').checked;
+  var extra=document.getElementById('cfg-extra').value.trim();
+  return{path:state.path,project_type:state.type,
+    include_tests:document.getElementById('cfg-tests').checked,
+    include_lint:document.getElementById('cfg-lint').checked,
+    cleanup:document.getElementById('cfg-cleanup').checked,
+    retries:parseInt(document.getElementById('cfg-retries').value)||0,
+    extra_commands:extra?extra.split('\n').map(function(l){return l.trim();}).filter(Boolean):[],
+    deploy_type:dep?document.getElementById('cfg-deploy-type').value:null,
+    deploy_env:dep?document.getElementById('cfg-deploy-env').value:null,
+    docker_image:document.getElementById('cfg-image').value.trim()||null,
+    docker_registry:document.getElementById('cfg-registry').value.trim()||null,
+    k8s_manifest:document.getElementById('cfg-k8s').value.trim()||null,
+    deploy_script:document.getElementById('cfg-script').value.trim()||null};
+}
+
+document.getElementById('btn-preview').addEventListener('click',async function(){
+  var btn=this; btn.textContent='Loading...'; btn.disabled=true;
+  try{
+    var r=await fetch('/api/pipeline',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(buildPayload())});
+    var d=await r.json();
+    if(d.error){alert(d.error);return;}
+    document.getElementById('preview-info').innerHTML=
+      '<div class="info-tile"><div class="lbl">Project Type</div><div class="val">'+esc(d.project_type)+'</div></div>'+
+      '<div class="info-tile"><div class="lbl">Build Steps</div><div class="val">'+d.build_count+'</div></div>'+
+      '<div class="info-tile"><div class="lbl">Test Steps</div><div class="val">'+d.test_count+'</div></div>'+
+      '<div class="info-tile"><div class="lbl">Deploy Steps</div><div class="val">'+d.deploy_count+'</div></div>'+
+      '<div class="info-tile"><div class="lbl">Total</div><div class="val">'+d.total_steps+'</div></div>';
+    document.getElementById('steps-list').innerHTML=d.steps.map(function(s,i){
+      return '<div class="step-item"><div class="step-num">'+(i+1)+'</div>'+
+        '<div><div class="step-name">'+esc(s.name)+' <span class="badge badge-'+s.stage+'">'+s.stage+'</span></div>'+
+        '<div class="step-cmd">'+esc(s.command)+'</div></div></div>';
+    }).join('');
+    showCard('preview');
+  }catch(e){alert('Error: '+e.message);}
+  finally{btn.textContent='Preview Pipeline'; btn.disabled=false;}
+});
+
+document.getElementById('btn-execute').addEventListener('click',async function(){
+  showCard('execution');
+  document.getElementById('exec-spinner').style.display='';
+  document.getElementById('exec-results').innerHTML='';
+  document.getElementById('exec-btns').style.display='none';
+  try{
+    var r=await fetch('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(buildPayload())});
+    var d=await r.json();
+    document.getElementById('exec-spinner').style.display='none';
+    var html='';
+    if(d.error){
+      html='<div class="alert alert-danger">'+esc(d.error)+'</div>';
+    }else{
+      var warned=d.warned||0;
+      if(d.failed===0 && warned===0)
+        html='<div class="alert alert-success">All '+d.total+' steps passed! Run ID: '+(d.run_id||'-')+'</div>';
+      else if(d.failed===0)
+        html='<div class="alert alert-success">'+d.passed+'/'+d.total+' steps passed ('+warned+' optional step(s) skipped). Run ID: '+(d.run_id||'-')+'</div>';
+      else
+        html='<div class="alert alert-danger">'+d.failed+' of '+d.total+' steps failed.</div>';
+      html+=d.results.map(function(r){
+        var isWarn=!r.success&&r.allow_failure;
+        var cls=r.success?'ok':(isWarn?'warn':'fail');
+        var badge=r.success?'badge-ok':(isWarn?'badge-deploy':'badge-fail');
+        var label=r.success?'PASS':(isWarn?'WARN':'FAIL');
+        return '<div class="result-item '+cls+'" style="'+(isWarn?'border-color:var(--warn);background:#fffbeb':'')+'">'+
+          '<div class="result-header"><span class="badge '+badge+'">'+label+'</span>'+
+          '<strong>'+esc(r.step_name)+'</strong>'+
+          (isWarn?'<span style="font-size:.72rem;color:var(--warn);margin-left:.4rem">(optional)</span>':'')+
+          '<span class="badge badge-'+r.stage+'" style="margin-left:auto">'+r.stage+'</span></div>'+
+          '<div style="font-size:.75rem;color:var(--muted)">Attempts: '+r.attempts+'</div>'+
+          (r.output?'<div class="result-output">'+esc(r.output)+'</div>':'')+
+          '</div>';
+      }).join('');
+    }
+    document.getElementById('exec-results').innerHTML=html;
+    document.getElementById('exec-btns').style.display='';
+  }catch(e){
+    document.getElementById('exec-spinner').style.display='none';
+    document.getElementById('exec-results').innerHTML='<div class="alert alert-danger">'+esc(e.message)+'</div>';
+    document.getElementById('exec-btns').style.display='';
+  }
+});
+
+document.getElementById('btn-pr-review').addEventListener('click', async function(){
+  var dialKey = document.getElementById('pr-dial-key').value.trim();
+  var dialUrl = document.getElementById('pr-dial-url').value.trim();
+  var out = document.getElementById('pr-output');
+  if(!state.path){ out.innerHTML='<div class="alert alert-danger" style="font-size:.82rem">Detect a project first.</div>'; return; }
+  var btn=this; btn.textContent='Reviewing...'; btn.disabled=true;
+  out.innerHTML='<div class="spinner" style="width:1.4rem;height:1.4rem;border-width:2px;margin:.5rem 0"></div>';
+  try{
+    var steps=[]; document.querySelectorAll('#steps-list .step-item').forEach(function(el,i){
+      steps.push({name:el.querySelector('.step-name').textContent.replace(/build|test|deploy|cleanup/gi,'').trim(), command:el.querySelector('.step-cmd').textContent.trim(), stage:el.querySelector('.badge') ? el.querySelector('.badge').textContent.trim() : 'build'});
+    });
+    var body={path:state.path,steps:steps};
+    if(dialKey) body.dial_api_key=dialKey;
+    if(dialUrl) body.dial_base_url=dialUrl;
+    var r=await fetch('/api/pipeline/review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    var d=await r.json();
+    if(d.error){out.innerHTML='<div class="alert alert-danger" style="font-size:.82rem">'+esc(d.error)+'</div>';return;}
+    var rv=d.review;
+    var scoreColor=rv.score>=8?'var(--success)':rv.score>=5?'var(--warn)':'var(--danger)';
+    var priorityColors={high:'badge-fail',medium:'badge-deploy',low:'badge-info'};
+    var catColors={security:'badge-fail',performance:'badge-deploy','best-practice':'badge-test',reliability:'badge-build',coverage:'badge-test'};
+    var html='<div style="display:flex;align-items:center;gap:.65rem;margin-bottom:.55rem">'+
+      '<span style="font-size:1.1rem;font-weight:700;color:'+scoreColor+'">'+rv.score+'/10</span>'+
+      '<span style="font-size:.82rem;color:var(--muted)">'+esc(rv.summary||'')+'</span>'+
+      '<span style="font-size:.75rem;color:var(--muted);margin-left:auto">'+d.elapsed_s+'s &bull; '+esc(d.model)+'</span></div>';
+    if(rv.suggestions&&rv.suggestions.length){
+      window.__prSuggestions=rv.suggestions;
+      html+='<div style="font-size:.78rem;font-weight:700;color:var(--muted);margin-bottom:.35rem">'+rv.suggestions.length+' suggestion'+(rv.suggestions.length!==1?'s':'')+'</div>';
+      html+=rv.suggestions.map(function(s,idx){
+        var pc=priorityColors[s.priority]||'badge-info';
+        var cc=catColors[s.category]||'badge-info';
+        return '<div class="finding-item '+(s.priority==='high'?'high':s.priority==='medium'?'medium':'low')+'" style="margin-bottom:.4rem">'+
+          '<div style="display:flex;align-items:center;gap:.45rem;flex-wrap:wrap;margin-bottom:.2rem">'+
+          '<span class="badge '+pc+'">'+esc((s.priority||'').toUpperCase())+'</span>'+
+          '<span class="badge '+cc+'" style="font-size:.7rem">'+esc(s.category||'')+'</span>'+
+          (s.command?'<button type="button" class="btn btn-outline btn-sm" style="margin-left:auto;padding:.15rem .55rem;font-size:.72rem" data-add-suggestion="'+idx+'" onclick="addSuggestionToPipeline('+idx+',this)">&#10133; Add to Pipeline</button>':'')+
+          '</div>'+
+          '<div style="font-size:.82rem;font-weight:600;margin-bottom:.15rem">'+esc(s.title||'')+'</div>'+
+          '<div style="font-size:.78rem;color:var(--muted)">'+esc(s.description||'')+'</div>'+
+          (s.command?'<div style="font-family:monospace;font-size:.75rem;background:#1e293b;color:#e2e8f0;padding:.35rem .55rem;border-radius:4px;margin-top:.3rem">'+esc(s.command)+'</div>':'')+
+          '</div>';
+      }).join('');
+    }else{
+      html+='<p style="font-size:.82rem;color:var(--success);font-weight:600">&#10004; Pipeline looks good — no major improvements suggested.</p>';
+    }
+    out.innerHTML=html;
+  }catch(e){out.innerHTML='<div class="alert alert-danger" style="font-size:.82rem">'+esc(e.message)+'</div>';}
+  finally{btn.textContent='&#128269; Review Pipeline with AI'; btn.disabled=false;}
+});
+
+function addSuggestionToPipeline(idx,btnEl){
+  var s=(window.__prSuggestions||[])[idx];
+  if(!s||!s.command) return;
+  var extraEl=document.getElementById('cfg-extra');
+  var lines=extraEl.value.split('\n').map(function(l){return l.trim();}).filter(Boolean);
+  if(lines.indexOf(s.command.trim())===-1){
+    lines.push(s.command.trim());
+    extraEl.value=lines.join('\n');
+  }
+  btnEl.textContent='\u2713 Added';
+  btnEl.disabled=true;
+  btnEl.style.opacity='0.7';
+  // Refresh the preview so the new step shows up immediately, if a preview already exists.
+  var previewCard=document.getElementById('card-preview');
+  if(previewCard && previewCard.style.display!=='none'){
+    document.getElementById('btn-preview').click();
+  }
+}
+
+function resetPipeline(){
+  state={path:'',type:'',info:{}};
+  document.getElementById('repo-path').value='';
+  var dr=document.getElementById('detect-result');
+  dr.style.display='none'; dr.innerHTML='';
+  showCard('repo');
+}
+
+document.getElementById('exp-deploy-on').addEventListener('change',function(){
+  document.getElementById('exp-deploy-opts').style.display=this.checked?'':'none';
+});
+document.getElementById('btn-export').addEventListener('click',async function(){
+  var path=document.getElementById('exp-path').value.trim();
+  if(!path){alert('Enter a project path.');return;}
+  var dep=document.getElementById('exp-deploy-on').checked;
+  var btn=this; btn.textContent='Generating...'; btn.disabled=true;
+  try{
+    var r=await fetch('/api/export',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({path:path,target:document.getElementById('exp-target').value,
+        include_tests:document.getElementById('exp-tests').checked,
+        include_lint:document.getElementById('exp-lint').checked,
+        deploy_type:dep?document.getElementById('exp-deploy-type').value:null,
+        deploy_env:dep?document.getElementById('exp-deploy-env').value:null})});
+    var d=await r.json();
+    if(d.error){alert(d.error);return;}
+    document.getElementById('exp-filename').textContent=d.filename;
+    document.getElementById('exp-code').textContent=d.content;
+    document.getElementById('export-out').style.display='';
+  }catch(e){alert('Error: '+e.message);}
+  finally{btn.textContent='Generate Config'; btn.disabled=false;}
+});
+document.getElementById('btn-copy').addEventListener('click',function(){
+  navigator.clipboard.writeText(document.getElementById('exp-code').textContent);
+  this.textContent='Copied!';
+  var self=this; setTimeout(function(){self.textContent='Copy';},2000);
+});
+
+async function loadHistory(){
+  var all=document.getElementById('hist-all').checked;
+  document.getElementById('hist-body').innerHTML='<div class="spinner"></div>';
+  document.getElementById('run-detail').style.display='none';
+  try{
+    var r=await fetch('/api/history'+(all?'?all=true':''));
+    var d=await r.json();
+    if(d.error){document.getElementById('hist-body').innerHTML='<p style="color:red">'+esc(d.error)+'</p>';return;}
+    if(!d.runs.length){
+      document.getElementById('hist-body').innerHTML='<p style="text-align:center;color:var(--muted);padding:2rem">No runs yet. Run a pipeline first.</p>';
+      return;
+    }
+    document.getElementById('hist-body').innerHTML=
+      '<table><thead><tr><th>Run ID</th><th>Type</th><th>Status</th><th>Passed</th><th>Started</th><th>Duration</th><th></th></tr></thead><tbody>'+
+      d.runs.map(function(run){
+        return '<tr>'+
+          '<td style="font-family:monospace;font-size:.75rem">'+run.id.slice(0,8)+'&hellip;</td>'+
+          '<td>'+esc(run.project_type||'-')+'</td>'+
+          '<td><span class="badge '+(run.status==='success'?'badge-ok':'badge-fail')+'">'+esc(run.status)+'</span></td>'+
+          '<td>'+(run.passed||0)+' / '+(run.total_steps||0)+'</td>'+
+          '<td style="font-size:.78rem;color:var(--muted)">'+(run.started_at||'').slice(0,19).replace('T',' ')+'</td>'+
+          '<td style="color:var(--muted)">'+(run.duration_s!=null?run.duration_s.toFixed(1)+'s':'-')+'</td>'+
+          '<td><button class="btn btn-outline btn-sm" onclick="loadRunDetail(\''+run.id+'\')">Details</button></td>'+
+          '</tr>';
+      }).join('')+
+      '</tbody></table>';
+  }catch(e){document.getElementById('hist-body').innerHTML='<p style="color:red">'+esc(e.message)+'</p>';}
+}
+async function loadRunDetail(id){
+  try{
+    var r=await fetch('/api/history/'+id);
+    var d=await r.json();
+    if(d.error){alert(d.error);return;}
+    var run=d.run;
+    document.getElementById('run-detail-body').innerHTML=
+      '<div class="info-grid" style="margin-bottom:1rem">'+
+      '<div class="info-tile"><div class="lbl">Run ID</div><div class="val" style="font-size:.72rem;font-family:monospace">'+run.id+'</div></div>'+
+      '<div class="info-tile"><div class="lbl">Type</div><div class="val">'+esc(run.project_type||'-')+'</div></div>'+
+      '<div class="info-tile"><div class="lbl">Status</div><div class="val"><span class="badge '+(run.status==='success'?'badge-ok':'badge-fail')+'">'+esc(run.status)+'</span></div></div>'+
+      '<div class="info-tile"><div class="lbl">Passed/Total</div><div class="val">'+(run.passed||0)+' / '+(run.total_steps||0)+'</div></div>'+
+      '</div>'+
+      (run.steps||[]).map(function(s){
+        return '<div class="result-item '+(s.success?'ok':'fail')+'">'+
+          '<div class="result-header"><span class="badge '+(s.success?'badge-ok':'badge-fail')+'">'+(s.success?'PASS':'FAIL')+'</span>'+
+          '<strong>'+esc(s.step_name||'')+'</strong>'+
+          '<span class="badge badge-'+(s.stage||'build')+'" style="margin-left:auto">'+(s.stage||'')+'</span></div>'+
+          '<div style="font-size:.75rem;font-family:monospace;color:var(--muted);margin-top:.2rem">'+esc(s.command||'')+'</div>'+
+          (s.output?'<div class="result-output">'+esc(s.output)+'</div>':'')+
+          '</div>';
+      }).join('');
+    document.getElementById('run-detail').style.display='';
+  }catch(e){alert('Error: '+e.message);}
+}
+document.getElementById('btn-refresh').addEventListener('click',loadHistory);
+document.getElementById('hist-all').addEventListener('change',loadHistory);
+
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ── Pipeline tab → Deploy to Azure DevOps ────────────────────────────────────
+
+document.getElementById('btn-deploy-ado').addEventListener('click', function(){
+  // Reset previous state
+  document.getElementById('ado-connect-status').textContent = '';
+  document.getElementById('ado-repo-config').style.display = 'none';
+  document.getElementById('ado-result').style.display = 'none';
+  showCard('ado');
+});
+
+document.getElementById('btn-ado-connect').addEventListener('click', async function(){
+  var orgUrl  = document.getElementById('ado-org-url').value.trim();
+  var project = document.getElementById('ado-project').value.trim();
+  var pat     = document.getElementById('ado-pat').value.trim();
+  var status  = document.getElementById('ado-connect-status');
+
+  if(!orgUrl || !project){
+    status.textContent = '⚠ Please fill in Org URL and Project.';
+    status.style.color = 'var(--warn)';
+    return;
+  }
+  var btn = this; btn.textContent = 'Connecting...'; btn.disabled = true;
+  status.textContent = ''; status.style.color = '';
+  try {
+    var r = await fetch('/api/azure/repos', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({org_url: orgUrl, project: project, pat: pat})
+    });
+    var d = await r.json();
+    if(d.error){ status.textContent = '✗ ' + d.error; status.style.color='var(--danger)'; return; }
+
+    var sel = document.getElementById('ado-repo');
+    sel.innerHTML = d.repos.map(function(repo){
+      return '<option value="'+esc(repo.name)+'">'+esc(repo.name)+'</option>';
+    }).join('');
+
+    document.getElementById('ado-repo-config').style.display = '';
+    status.textContent = '✓ Connected — ' + d.repos.length + ' repo(s) found';
+    status.style.color = 'var(--success)';
+  } catch(e) {
+    status.textContent = '✗ ' + e.message; status.style.color = 'var(--danger)';
+  } finally {
+    btn.textContent = '🔗 Connect & Load Repos'; btn.disabled = false;
+  }
+});
+
+document.getElementById('ado-aca-on').addEventListener('change', function(){
+  document.getElementById('ado-aca-fields').style.display = this.checked ? '' : 'none';
+  var nameInput = document.getElementById('ado-pipeline-name');
+  nameInput.value = this.checked ? 'Deploy to Azure Container Apps' : 'CI Pipeline';
+});
+
+document.getElementById('btn-ado-deploy').addEventListener('click', async function(){
+  var orgUrl       = document.getElementById('ado-org-url').value.trim();
+  var project      = document.getElementById('ado-project').value.trim();
+  var pat          = document.getElementById('ado-pat').value.trim();
+  var repoName     = document.getElementById('ado-repo').value.trim();
+  var branch       = document.getElementById('ado-branch').value.trim() || 'main';
+  var pipelineName = document.getElementById('ado-pipeline-name').value.trim() || 'CI Pipeline';
+  var useAca       = document.getElementById('ado-aca-on').checked;
+
+  var btn = this; btn.textContent = 'Creating pipeline...'; btn.disabled = true;
+  document.getElementById('ado-result').style.display = 'none';
+  try {
+    var payload = buildPayload();
+    payload.org_url       = orgUrl;
+    payload.project       = project;
+    payload.pat           = pat;
+    payload.repo_name     = repoName;
+    payload.branch        = branch;
+    payload.pipeline_name = pipelineName;
+
+    var endpoint = '/api/azure/deploy-basic';
+    if(useAca){
+      var rg      = document.getElementById('ado-rg').value.trim();
+      var acr     = document.getElementById('ado-acr').value.trim();
+      var appName = document.getElementById('ado-app-name').value.trim();
+      if(!rg || !acr || !appName){
+        alert('Please fill in Resource Group, ACR Name and Container App Name.');
+        return;
+      }
+      payload.resource_group  = rg;
+      payload.acr_name        = acr;
+      payload.app_name        = appName;
+      payload.location        = document.getElementById('ado-location').value.trim() || 'eastus';
+      payload.aca_env_name    = document.getElementById('ado-aca-env').value.trim();
+      payload.skip_provision  = document.getElementById('ado-skip-provision').checked;
+      endpoint = '/api/azure/deploy-aca';
+    }
+
+    var r = await fetch(endpoint, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    var d = await r.json();
+    if(d.error){ alert('Error: ' + d.error); return; }
+
+    var nextStepHtml = d.next_step
+      ? '<div style="font-size:.78rem;color:#92400e;background:#fff8e1;padding:.5rem .75rem;border-radius:6px;border-left:3px solid var(--warn);margin-top:.6rem">&#9888; '+esc(d.next_step)+'</div>'
+      : '';
+
+    document.getElementById('ado-result-body').innerHTML =
+      '<div class="info-grid" style="margin-bottom:1rem">' +
+        '<div class="info-tile"><div class="lbl">Project Type</div><div class="val">'+esc(d.project_type)+'</div></div>'+
+        '<div class="info-tile"><div class="lbl">Files Pushed</div><div class="val">'+(d.files_pushed != null ? d.files_pushed : '-')+'</div></div>'+
+        '<div class="info-tile"><div class="lbl">Pipeline ID</div><div class="val">'+d.pipeline_id+'</div></div>'+
+        '<div class="info-tile"><div class="lbl">Run ID</div><div class="val">'+d.run_id+'</div></div>'+
+      '</div>'+
+      '<div style="display:flex;flex-direction:column;gap:.5rem">'+
+        '<a href="'+esc(d.pipeline_url)+'" target="_blank" class="btn btn-primary btn-sm" style="width:fit-content">&#128640; Open Pipeline in Azure DevOps</a>'+
+        '<a href="'+esc(d.run_url)+'" target="_blank" class="btn btn-outline btn-sm" style="width:fit-content">&#128269; View Current Run</a>'+
+      '</div>'+nextStepHtml;
+
+    document.getElementById('ado-yaml-out').textContent = d.yaml_content;
+    document.getElementById('ado-result').style.display = '';
+  } catch(e) {
+    alert('Error: ' + e.message);
+  } finally {
+    btn.textContent = '&#128640; Create & Trigger Pipeline in Azure DevOps'; btn.disabled = false;
+  }
+});
+
+document.getElementById('btn-ado-copy-yaml').addEventListener('click', function(){
+  navigator.clipboard.writeText(document.getElementById('ado-yaml-out').textContent);
+  this.textContent = 'Copied!';
+  var self = this; setTimeout(function(){ self.textContent = 'Copy YAML'; }, 2000);
+});
+
+// ── Azure Deploy ─────────────────────────────────────────────────────────────
+
+document.getElementById('btn-az-connect').addEventListener('click', async function(){
+  var orgUrl  = document.getElementById('az-org-url').value.trim();
+  var project = document.getElementById('az-project').value.trim();
+  var pat     = document.getElementById('az-pat').value.trim();
+  var status  = document.getElementById('az-connect-status');
+
+  if(!orgUrl || !project){
+    status.textContent = '⚠ Please fill in Org URL and Project.';
+    status.style.color = 'var(--warn)';
+    return;
+  }
+  var btn = this; btn.textContent = 'Connecting...'; btn.disabled = true;
+  status.textContent = ''; status.style.color = '';
+  try {
+    var r = await fetch('/api/azure/repos', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({org_url: orgUrl, project: project, pat: pat})
+    });
+    var d = await r.json();
+    if(d.error){ status.textContent = '✗ ' + d.error; status.style.color='var(--danger)'; return; }
+
+    // Populate repo dropdown
+    var sel = document.getElementById('az-repo');
+    sel.innerHTML = d.repos.map(function(repo){
+      return '<option value="'+esc(repo.name)+'">'+esc(repo.name)+'</option>';
+    }).join('');
+
+    // Pre-fill project path from Pipeline tab state if available
+    if(state.path) document.getElementById('az-path').value = state.path;
+
+    document.getElementById('az-config-card').style.display = '';
+    document.getElementById('az-result').style.display = 'none';
+    status.textContent = '✓ Connected — ' + d.repos.length + ' repo(s) found';
+    status.style.color = 'var(--success)';
+  } catch(e) {
+    status.textContent = '✗ ' + e.message; status.style.color = 'var(--danger)';
+  } finally {
+    btn.textContent = '🔗 Connect & Load Repos'; btn.disabled = false;
+  }
+});
+
+document.getElementById('btn-az-deploy').addEventListener('click', async function(){
+  var orgUrl   = document.getElementById('az-org-url').value.trim();
+  var project  = document.getElementById('az-project').value.trim();
+  var pat      = document.getElementById('az-pat').value.trim();
+  var repoName = document.getElementById('az-repo').value.trim();
+  var branch   = document.getElementById('az-branch').value.trim() || 'main';
+  var acrName     = document.getElementById('az-acr').value.trim();
+  var rg          = document.getElementById('az-rg').value.trim();
+  var appName     = document.getElementById('az-app').value.trim();
+  var path        = document.getElementById('az-path').value.trim();
+  var location    = document.getElementById('az-location').value.trim() || 'eastus';
+  var projectType = document.getElementById('az-project-type').value;
+
+  if(!acrName || !rg || !appName){
+    alert('Please fill in ACR Name, Resource Group and Container App Name.');
+    return;
+  }
+
+  var btn = this; btn.textContent = 'Creating pipeline...'; btn.disabled = true;
+  document.getElementById('az-result').style.display = 'none';
+  try {
+    var r = await fetch('/api/azure/deploy-aca', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        path:           path || null,
+        project_type:   projectType,
+        org_url:        orgUrl,
+        project:        project,
+        pat:            pat,
+        repo_name:      repoName,
+        acr_name:       acrName,
+        resource_group: rg,
+        app_name:       appName,
+        location:       location,
+        branch:         branch,
+        skip_provision: document.getElementById('az-skip-provision').checked,
+        include_tests:  document.getElementById('az-tests').checked,
+        include_lint:   document.getElementById('az-lint').checked,
+      })
+    });
+    var d = await r.json();
+    if(d.error){ alert('Error: ' + d.error); return; }
+
+    // Show result
+    document.getElementById('az-result-body').innerHTML =
+      '<div class="info-grid" style="margin-bottom:1rem">' +
+        '<div class="info-tile"><div class="lbl">Project Type</div><div class="val">'+esc(d.project_type)+'</div></div>'+
+        '<div class="info-tile"><div class="lbl">Files Pushed</div><div class="val">'+(d.files_pushed != null ? d.files_pushed : '-')+'</div></div>'+
+        '<div class="info-tile"><div class="lbl">Pipeline ID</div><div class="val">'+d.pipeline_id+'</div></div>'+
+        '<div class="info-tile"><div class="lbl">Run ID</div><div class="val">'+d.run_id+'</div></div>'+
+      '</div>'+
+      '<div style="display:flex;flex-direction:column;gap:.5rem">'+
+        '<a href="'+esc(d.pipeline_url)+'" target="_blank" class="btn btn-primary btn-sm" style="width:fit-content">&#128640; Open Pipeline in Azure DevOps</a>'+
+        '<a href="'+esc(d.run_url)+'" target="_blank" class="btn btn-outline btn-sm" style="width:fit-content">&#128269; View Current Run</a>'+
+      '</div>';
+
+    document.getElementById('az-yaml-out').textContent = d.yaml_content;
+    document.getElementById('az-result').style.display = '';
+  } catch(e) {
+    alert('Error: ' + e.message);
+  } finally {
+    btn.textContent = '▶ Create & Trigger Pipeline in Azure DevOps'; btn.disabled = false;
+  }
+});
+
+document.getElementById('btn-az-copy').addEventListener('click', function(){
+  navigator.clipboard.writeText(document.getElementById('az-yaml-out').textContent);
+  this.textContent = 'Copied!';
+  var self = this; setTimeout(function(){ self.textContent = 'Copy YAML'; }, 2000);
+});
+
+fetch('/api/health').then(function(r){return r.json();}).then(function(){
+  document.getElementById('user-badge').textContent='connected';
+}).catch(function(){document.getElementById('user-badge').textContent='offline';});
+
+// Auto-load DIAL config — pre-fill key fields and show configured badge
+var _dialCfg = {has_key: false, base_url: '', model: ''};
+fetch('/api/dial/config').then(function(r){return r.json();}).then(function(cfg){
+  _dialCfg = cfg;
+  applyDialConfig();
+}).catch(function(){});
+
+function applyDialConfig(){
+  // Pipeline Review tab — static HTML fields
+  var prKey   = document.getElementById('pr-dial-key');
+  var prUrl   = document.getElementById('pr-dial-url');
+  if(prUrl && _dialCfg.base_url) prUrl.value = _dialCfg.base_url;
+  if(prKey && _dialCfg.has_key){
+    prKey.placeholder = '✓ Configured from .env';
+    prKey.style.borderColor = 'var(--success)';
+    prKey.style.background  = '#f0fdf4';
+  }
+  // Code Review tab — dynamic HTML fields (injected after detect)
+  var rvKey   = document.getElementById('review-dial-key');
+  var rvUrl   = document.getElementById('review-dial-url');
+  var rvModel = document.getElementById('review-dial-model');
+  if(rvUrl   && _dialCfg.base_url) rvUrl.value   = _dialCfg.base_url;
+  if(rvModel && _dialCfg.model)    rvModel.value  = _dialCfg.model;
+  if(rvKey   && _dialCfg.has_key){
+    rvKey.placeholder = '✓ Configured from .env';
+    rvKey.style.borderColor = 'var(--success)';
+    rvKey.style.background  = '#f0fdf4';
+  }
+}
+
+// Auto-load pre-configured credentials and Azure resource defaults on page start
+fetch('/api/azure/config').then(function(r){return r.json();}).then(function(cfg){
+
+  // ── ADO credentials ──────────────────────────────────────────────────────
+  if(cfg.org_url){
+    document.getElementById('az-org-url').value  = cfg.org_url;
+    document.getElementById('ado-org-url').value = cfg.org_url;
+  }
+  if(cfg.project){
+    document.getElementById('az-project').value  = cfg.project;
+    document.getElementById('ado-project').value = cfg.project;
+  }
+
+  if(cfg.has_pat){
+    var badge = document.createElement('div');
+    badge.className = 'alert alert-success';
+    badge.style.cssText = 'font-size:.8rem;padding:.4rem .75rem;margin-bottom:.75rem';
+    badge.innerHTML = '&#128275; Azure DevOps credentials are pre-configured. PAT ready — just pick a repo below.';
+    var adoCard = document.getElementById('card-ado');
+    if(adoCard){
+      var firstChild = adoCard.querySelector('p');
+      if(firstChild) adoCard.insertBefore(badge, firstChild.nextSibling);
+    }
+    var azConnectStatus = document.getElementById('az-connect-status');
+    if(azConnectStatus){
+      azConnectStatus.textContent = '✓ Credentials pre-configured — click Connect to load repos';
+      azConnectStatus.style.color = 'var(--success)';
+    }
+  }
+
+  // ── Azure resource defaults ───────────────────────────────────────────────
+  // Azure Deploy tab fields
+  if(cfg.acr_name)        document.getElementById('az-acr').value      = cfg.acr_name;
+  if(cfg.resource_group)  document.getElementById('az-rg').value       = cfg.resource_group;
+  if(cfg.app_name)        document.getElementById('az-app').value      = cfg.app_name;
+  if(cfg.location)        document.getElementById('az-location').value = cfg.location;
+
+  // Pipeline tab ADO card ACA fields
+  if(cfg.resource_group)  document.getElementById('ado-rg').value       = cfg.resource_group;
+  if(cfg.acr_name)        document.getElementById('ado-acr').value      = cfg.acr_name;
+  if(cfg.app_name)        document.getElementById('ado-app-name').value = cfg.app_name;
+  if(cfg.location)        document.getElementById('ado-location').value = cfg.location;
+  if(cfg.aca_env_name)    document.getElementById('ado-aca-env').value  = cfg.aca_env_name;
+
+  // Show a config banner if Azure resources are pre-filled
+  if(cfg.acr_name || cfg.resource_group || cfg.app_name){
+    var parts = [];
+    if(cfg.resource_group) parts.push('RG: <strong>'+cfg.resource_group+'</strong>');
+    if(cfg.acr_name)       parts.push('ACR: <strong>'+cfg.acr_name+'</strong>');
+    if(cfg.app_name)       parts.push('App: <strong>'+cfg.app_name+'</strong>');
+    if(cfg.location)       parts.push('Region: <strong>'+cfg.location+'</strong>');
+    var azBanner = document.createElement('div');
+    azBanner.style.cssText = 'font-size:.78rem;color:#1e40af;background:#eff6ff;padding:.4rem .75rem;border-radius:6px;border-left:3px solid var(--primary);margin-top:.65rem';
+    azBanner.innerHTML = '&#9881; Azure defaults pre-loaded: '+parts.join(' &bull; ');
+    var acaFields = document.getElementById('ado-aca-fields');
+    if(acaFields) acaFields.appendChild(azBanner);
+  }
+
+}).catch(function(){});
+
+</script>
+</body>
+</html>
