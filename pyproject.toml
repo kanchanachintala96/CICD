@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cicd-orchestrator-agent"
+version = "0.2.0"
+description = "Organisational-level CI/CD Orchestrator Agent"
+authors = [{name = "CI/CD Team"}]
+requires-python = ">=3.8"
+dependencies = [
+    "flask>=2.3",
+    "pyyaml>=6.0",
+    "pytest>=7.0",
+    "pynacl>=1.5",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "flake8>=6.0",
+]
+
+[project.scripts]
+cicd = "cicd_orchestrator.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
