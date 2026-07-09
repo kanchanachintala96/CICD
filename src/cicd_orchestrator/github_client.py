@@ -116,13 +116,16 @@ class GitHubClient:
         extra_files: dict[str, str] | None = None,
     ) -> tuple[int, list[str]]:
         """
-        Push all source files from *local_path* to the GitHub repo, one commit
-        per file via the Contents API (no local git required).
+        Push all source files from *local_path* to the GitHub repo in a single
+        atomic commit, using the Git Data API (blobs + tree + commit + ref
+        update) — NOT one commit per file. Pushing file-by-file via the
+        Contents API triggers a separate GitHub Actions run per file, which is
+        wasteful and noisy; a single commit triggers at most one run.
 
         Returns (file_count, skipped_files).
         """
         local_root = os.path.abspath(local_path)
-        pushed = 0
+        files: dict[str, str] = {}  # {repo_path: content}
         skipped: list[str] = []
 
         for dirpath, dirnames, filenames in os.walk(local_root):
@@ -152,15 +155,89 @@ class GitHubClient:
                     skipped.append(filename)  # binary files: skip (base64 push omitted for brevity)
                     continue
 
-                self.push_file(rel, content, branch=branch, commit_message=commit_message)
-                pushed += 1
+                files[rel] = content
 
         if extra_files:
-            for path, content in extra_files.items():
-                self.push_file(path, content, branch=branch, commit_message=commit_message)
-                pushed += 1
+            files.update(extra_files)
 
-        return pushed, skipped
+        if not files:
+            return 0, skipped
+
+        # Resolve current HEAD of the target branch (may not exist yet)
+        try:
+            ref = self._req("GET", self._repo_url(f"git/ref/heads/{branch}"))
+            base_commit_sha = ref["object"]["sha"]
+            base_commit = self._req("GET", self._repo_url(f"git/commits/{base_commit_sha}"))
+            base_tree_sha = base_commit["tree"]["sha"]
+            parents = [base_commit_sha]
+        except RuntimeError:
+            base_tree_sha = None
+            parents = []
+
+        # Create a blob per file, then one tree referencing all of them
+        tree_entries = []
+        for repo_path, content in files.items():
+            blob = self._req(
+                "POST",
+                self._repo_url("git/blobs"),
+                {"content": base64.b64encode(content.encode()).decode(), "encoding": "base64"},
+            )
+            tree_entries.append({
+                "path": repo_path,
+                "mode": "100644",
+                "type": "blob",
+                "sha": blob["sha"],
+            })
+
+        tree_body: dict[str, Any] = {"tree": tree_entries}
+        if base_tree_sha:
+            tree_body["base_tree"] = base_tree_sha
+        tree = self._req("POST", self._repo_url("git/trees"), tree_body)
+
+        commit = self._req(
+            "POST",
+            self._repo_url("git/commits"),
+            {"message": commit_message, "tree": tree["sha"], "parents": parents},
+        )
+
+        if parents:
+            self._req(
+                "PATCH",
+                self._repo_url(f"git/refs/heads/{branch}"),
+                {"sha": commit["sha"], "force": False},
+            )
+        else:
+            self._req(
+                "POST",
+                self._repo_url("git/refs"),
+                {"ref": f"refs/heads/{branch}", "sha": commit["sha"]},
+            )
+
+        return len(files), skipped
+
+    # ── Actions administration ───────────────────────────────────────────────
+
+    def set_actions_enabled(self, enabled: bool) -> None:
+        """Enable or disable GitHub Actions entirely for this repository."""
+        self._req("PUT", self._repo_url("actions/permissions"), {"enabled": enabled})
+
+    def delete_file(
+        self,
+        file_path: str,
+        branch: str = "main",
+        commit_message: str = "Delete file [CI/CD Orchestrator Agent]",
+    ) -> dict:
+        """Delete a single file from the repo (no-op if it doesn't exist)."""
+        path = file_path.lstrip("/")
+        url = self._repo_url(f"contents/{path}")
+        try:
+            info = self._req("GET", f"{url}?ref={branch}")
+        except RuntimeError:
+            return {"deleted": False, "reason": "file not found"}
+        return self._req(
+            "DELETE", url,
+            {"message": commit_message, "sha": info["sha"], "branch": branch},
+        )
 
     # ── Actions secrets ──────────────────────────────────────────────────────
 

@@ -1,0 +1,3 @@
+[console_scripts]
+cicd = cicd_orchestrator.cli:main
+cicd-orchestrator-mcp = cicd_orchestrator.mcp_server:main
